@@ -2,7 +2,7 @@ import os
 import json
 from typing import Final
 from telegram import Update, error
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes 
+from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, Application
 
 TOKEN: Final = os.environ.get('TELEGRAM_BOT_TOKEN')
 BOT_USERNAME: Final = "@byte_learn_bot"
