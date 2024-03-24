@@ -4,10 +4,7 @@ from typing import Final
 from telegram import Update, error
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes 
 
-with open('.env.json') as env_file:
-    config = json.load(env_file)
-
-TOKEN: Final = config["TELEGRAM_BOT_TOKEN"]
+TOKEN: Final = os.environ.get('TELEGRAM_BOT_TOKEN')
 BOT_USERNAME: Final = "@byte_learn_bot"
 
 async def startCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
