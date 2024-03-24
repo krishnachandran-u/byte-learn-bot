@@ -1,10 +1,12 @@
 import os
-import json
+from dotenv import load_dotenv
 from typing import Final
 from telegram import Update, error
-from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, Application
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes 
 
-TOKEN: Final = os.environ.get('TELEGRAM_BOT_TOKEN')
+load_dotenv()
+
+TOKEN: Final = os.getenv("TOKEN")
 BOT_USERNAME: Final = "@byte_learn_bot"
 
 async def startCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
