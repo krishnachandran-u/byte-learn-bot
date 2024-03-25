@@ -12,6 +12,20 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 
+import firebase_admin
+from firebase_admin import credentials, firestore, db
+from firebase_admin import firestore
+cred = credentials.Certificate('serviceAccountKey.json')
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+data = {
+    'name': 'adharsh',
+}
+
+doc_ref = db.collection('test_collection').document()
+
 TOKEN = getenv('TOKEN')
 
 dp = Dispatcher()
@@ -39,5 +53,6 @@ async def main() -> None:
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
+    doc_ref.set(data)
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
