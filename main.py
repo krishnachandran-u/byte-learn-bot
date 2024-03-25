@@ -1,34 +1,29 @@
-import os
+import asyncio
+import logging
+import sys
 from dotenv import load_dotenv
-from typing import Final
-from telegram import Update, error
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes 
+from os import getenv
 
 load_dotenv()
 
-TOKEN: Final = os.getenv("TOKEN")
-BOT_USERNAME: Final = "@byte_learn_bot"
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+from aiogram.utils.markdown import hbold
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Hello! I'm a bot that helps you learn.")
+TOKEN = getenv('TOKEN')
 
-def handle_response(text: str) -> str:
-    if(text == 'hi'):
-        return 'Hello!'
+dp = Dispatcher()
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text: str = update.message.text
-    response: str = handle_response(text)
-    await update.message.reply_text(response)
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+    await message.answer('Welcome to the bot!')
 
-if __name__ == "__main__":
-    print('starting bot')
-    app = Application.builder().token(TOKEN).build()
+async def main() -> None:
+    bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
+    await dp.start_polling(bot)
 
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(MessageHandler(filters.Text, handle_message))
-
-    app.add_error_handler(error)
-
-    print('polling')
-    app.run_polling(poll_interval=3)
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
