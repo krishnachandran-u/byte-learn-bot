@@ -9,7 +9,7 @@ load_dotenv()
 TOKEN: Final = os.getenv("TOKEN")
 BOT_USERNAME: Final = "@byte_learn_bot"
 
-async def startCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Hello! I'm a bot that helps you learn.")
 
 def handle_response(text: str) -> str:
