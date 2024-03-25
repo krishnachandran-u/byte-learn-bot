@@ -18,7 +18,16 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    await message.answer('Welcome to the bot!')
+    await message.answer(
+"""Welcome! I'm ByteLearn Bot, a learning bot that delivers daily knowledge bites.
+Want to learn something new? Just tell me a topic, and I'll send you interesting articles, videos, or other resources to get you started.
+Ready to explore? Let's go!
+
+/slots - Get a list of all slots
+/newslot - Create a new slot
+/editslot - Edit a slot
+/deleteslot - Delete a slot
+""")
 
 async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
