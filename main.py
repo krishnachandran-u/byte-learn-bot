@@ -8,7 +8,7 @@ load_dotenv()
 
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 
@@ -28,6 +28,11 @@ Ready to explore? Let's go!
 /editslot - Edit a slot
 /deleteslot - Delete a slot
 """)
+
+@dp.message(Command('slots'))
+async def command_slots_handler(message: Message) -> None:
+    await message.answer("Here are the available slots")
+    
 
 async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
