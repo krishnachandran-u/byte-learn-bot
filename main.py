@@ -20,18 +20,15 @@ firebase_admin.initialize_app(cred)
 
 db = firestore.client()
 
-data = {
-    'name': 'adharsh',
-}
-
-doc_ref = db.collection('test_collection').document()
-
 TOKEN = getenv('TOKEN')
+USERID = 0
 
 dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
+    global USERID
+    USERID = message.from_user.id
     await message.answer(
 """Welcome! I'm ByteLearn Bot, a learning bot that delivers daily knowledge bites.
 Want to learn something new? Just tell me a topic, and I'll send you interesting articles, videos, or other resources to get you started.
@@ -42,17 +39,22 @@ Ready to explore? Let's go!
 /editslot - Edit a slot
 /deleteslot - Delete a slot
 """)
-
+        
 @dp.message(Command('slots'))
 async def command_slots_handler(message: Message) -> None:
-    await message.answer("Here are the available slots")
-    
+    global USERID
+    slots_ref = db.collection('users').document(str(USERID)).collection('slots')
+    slots = slots_ref.stream()
+    reply = ""
+    for doc in slots:
+        data = doc.to_dict()
+        reply += f"{data['name']}\n"  
+    await message.answer(f"Here are the available slots:\n{reply}")
 
 async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    doc_ref.set(data)
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
