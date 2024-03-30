@@ -25,6 +25,8 @@ USERID = 0
 
 dp = Dispatcher()
 
+slots_ref = db.collection('users').document(str(USERID)).collection('slots')
+
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     global USERID
@@ -35,6 +37,7 @@ Want to learn something new? Just tell me a topic, and I'll send you interesting
 Ready to explore? Let's go!
 
 /slots - Get a list of all slots
+/viewslot slot_name - View resources in a slot
 /newslot - Create a new slot
 /editslot - Edit a slot
 /deleteslot - Delete a slot
@@ -43,13 +46,35 @@ Ready to explore? Let's go!
 @dp.message(Command('slots'))
 async def command_slots_handler(message: Message) -> None:
     global USERID
+    global slots_ref
+
     slots_ref = db.collection('users').document(str(USERID)).collection('slots')
     slots = slots_ref.stream()
     reply = ""
     for doc in slots:
         data = doc.to_dict()
         reply += f"{data['name']}\n"  
-    await message.answer(f"Here are the available slots:\n{reply}")
+    await message.answer(f"Here are the available slots:\n{reply}To view the resources in a slot, type /viewslot slot_name")
+
+@dp.message(Command('viewslot'))
+async def command_viewslot_handler(message: Message) -> None:
+    global USERID
+    global slots_ref
+
+    slot_name = message.text.split(' ')[1]
+
+    slots = slots_ref.stream()
+    for doc in slots:
+        data = doc.to_dict()
+        if slot_name == data['name'] :
+            reply = ""
+            for k, v in data.items():
+                reply += (f"{k}: {v}\n") 
+            await message.answer(reply)
+            return
+    else :
+        await message.answer("Slot not found")
+
 
 async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
