@@ -69,12 +69,28 @@ async def command_viewslot_handler(message: Message) -> None:
         if slot_name == data['name'] :
             reply = ""
             for k, v in data.items():
-                reply += (f"{k}: {v}\n") 
+                reply += (f"{k.capitalize()}: {v}\n") 
             await message.answer(reply)
             return
-    else :
-        await message.answer("Slot not found")
+    await message.answer("Slot not found")
 
+@dp.message(Command('deleteslot'))
+async def command_deleteslot_handler(message: Message) -> None:
+    global USERID
+    global slots_ref
+
+    slot_name = message.text.split(' ')[1]
+
+    slots = slots_ref.stream()
+
+    for doc in slots:
+        data = doc.to_dict()
+        if slot_name == data['name'] :
+            doc_ref = slots_ref.document(doc.id)
+            doc_ref.delete()
+            await message.answer(f"Slot {slot_name} deleted")
+            return
+    await message.answer("Slot not found")
 
 async def main() -> None:
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
