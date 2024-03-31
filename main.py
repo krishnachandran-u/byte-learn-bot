@@ -41,6 +41,7 @@ Ready to explore? Let's go!
 /newslot - Create a new slot
 /editslot - Edit a slot
 /deleteslot slot_name - Delete a slot
+/cancel - Cancel the current operation
 """)
         
 @dp.message(Command('slots'))
@@ -87,18 +88,33 @@ async def command_newslot_handler(message: Message, state: FSMContext) -> None:
 
 @form_router.message(Form.name)
 async def process_name(message: Message, state: FSMContext) -> None:
+    if(message.text == "/cancel"):
+        await state.clear()
+        await message.answer("Slot creation cancelled")
+        return
+
     await state.update_data(name=message.text)
     await state.set_state(Form.prompt)
     await message.answer("Enter the prompt for the slot:")
 
 @form_router.message(Form.prompt)
 async def process_prompt(message: Message, state: FSMContext) -> None:
+    if(message.text == "/cancel"):
+        await state.clear()
+        await message.answer("Slot creation cancelled")
+        return
+
     await state.update_data(prompt=message.text)
     await state.set_state(Form.days)
     await message.answer("Enter the number of days for the slot:")
 
 @form_router.message(Form.days)
 async def process_days(message: Message, state: FSMContext) -> None:
+    if(message.text == "/cancel"):
+        await state.clear()
+        await message.answer("Slot creation cancelled")
+        return
+
     await state.update_data(days=message.text)
 
     user_id = message.from_user.id
@@ -109,7 +125,7 @@ async def process_days(message: Message, state: FSMContext) -> None:
         'prompt': (await state.get_data())['prompt'],
         'days': (await state.get_data())['days']
     })
-
+    await state.clear()
     await message.answer("Slot created!")
 
 @dp.message(Command('deleteslot'))
