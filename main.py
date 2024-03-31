@@ -39,7 +39,6 @@ Ready to explore? Let's go!
 /slots - Get a list of all slots
 /viewslot slot_name - View resources in a slot
 /newslot - Create a new slot
-/editslot - Edit a slot
 /deleteslot slot_name - Delete a slot
 /cancel - Cancel the current operation
 """)
@@ -53,22 +52,20 @@ async def command_slots_handler(message: Message) -> None:
     for doc in slots:
         data = doc.to_dict()
         reply += f"{data['name']}\n"  
-    await message.answer(f"Here are the available slots:\n{reply}To view the resources in a slot, type /viewslot slot_name")
+    await message.answer(f"Here are the available slots:\n\n{reply}\nTo view the resources in a slot, type /viewslot slot_name")
 
 @dp.message(Command('viewslot'))
 async def command_viewslot_handler(message: Message) -> None:
     user_id = message.from_user.id
     slots_ref = db.collection('users').document(str(user_id)).collection('slots')
 
-    slot_name = message.text.split(' ')[1]
+    slot_name = message.text.replace("/viewslot ", "", 1).strip()
 
     slots = slots_ref.stream()
     for doc in slots:
         data = doc.to_dict()
         if slot_name == data['name'] :
-            reply = ""
-            for k, v in data.items():
-                reply += (f"{k.capitalize()}: {v}\n") 
+            reply = f"Name: {data['name']}\n\nPrompt: {data['prompt']}\n\nDays: {data['days']}\n"
             await message.answer(reply)
             return
     await message.answer("Slot not found")
@@ -80,9 +77,6 @@ class Form(StatesGroup):
 
 @form_router.message(Command('newslot'))
 async def command_newslot_handler(message: Message, state: FSMContext) -> None:
-    user_id = message.from_user.id
-    slots_ref = db.collection('users').document(str(user_id)).collection('slots')
-
     await state.set_state(Form.name)
     await message.answer("Enter the name of the slot:")
 
@@ -93,7 +87,21 @@ async def process_name(message: Message, state: FSMContext) -> None:
         await message.answer("Slot creation cancelled")
         return
 
-    await state.update_data(name=message.text)
+    user_id = message.from_user.id
+    slots_ref = db.collection('users').document(str(user_id)).collection('slots')
+
+    refined_name = message.text
+    refined_name = ' '.join(refined_name.split())
+
+    slots = slots_ref.stream()
+    for doc in slots:
+        data = doc.to_dict()
+        if refined_name.strip() == data['name'] :
+            await state.clear()
+            await message.answer("Slot with this name already exists. Operation aborted")
+            return
+
+    await state.update_data(name=refined_name.strip())
     await state.set_state(Form.prompt)
     await message.answer("Enter the prompt for the slot:")
 
@@ -104,7 +112,7 @@ async def process_prompt(message: Message, state: FSMContext) -> None:
         await message.answer("Slot creation cancelled")
         return
 
-    await state.update_data(prompt=message.text)
+    await state.update_data(prompt=message.text.strip())
     await state.set_state(Form.days)
     await message.answer("Enter the number of days for the slot:")
 
@@ -115,15 +123,15 @@ async def process_days(message: Message, state: FSMContext) -> None:
         await message.answer("Slot creation cancelled")
         return
 
-    await state.update_data(days=message.text)
+    await state.update_data(days=message.text.strip())
 
     user_id = message.from_user.id
     slots_ref = db.collection('users').document(str(user_id)).collection('slots')
 
     slots_ref.add({
-        'name': (await state.get_data())['name'],
-        'prompt': (await state.get_data())['prompt'],
-        'days': (await state.get_data())['days']
+        'name': (await state.get_data())['name'].strip(),
+        'prompt': (await state.get_data())['prompt'].strip(),
+        'days': (await state.get_data())['days'].strip()
     })
     await state.clear()
     await message.answer("Slot created!")
@@ -133,7 +141,7 @@ async def command_deleteslot_handler(message: Message) -> None:
     user_id = message.from_user.id
     slots_ref = db.collection('users').document(str(user_id)).collection('slots')
 
-    slot_name = message.text.split(' ')[1]
+    slot_name = message.text.replace("/deleteslot ", "", 1).strip()
 
     slots = slots_ref.stream()
 
@@ -144,6 +152,7 @@ async def command_deleteslot_handler(message: Message) -> None:
             doc_ref.delete()
             await message.answer(f"Slot {slot_name} deleted")
             return
+
     await message.answer("Slot not found")
 
 async def main() -> None:
