@@ -20,6 +20,23 @@ from firebase_admin import firestore
 cred = credentials.Certificate('serviceAccountKey.json')
 firebase_admin.initialize_app(cred)
 
+import pathlib
+import textwrap
+
+import google.generativeai as genai
+
+from IPython.display import display
+from IPython.display import Markdown
+
+def to_markdown(text):
+  text = text.replace('•', '  *')
+  return Markdown(textwrap.indent(text, '> ', predicate=lambda _: True))
+
+GOOGLE_API_KEY = getenv('GOOGLE_API_KEY')
+genai.configure(api_key=GOOGLE_API_KEY)
+
+model = genai.GenerativeModel('gemini-pro')
+
 db = firestore.client()
 
 TOKEN = getenv('TOKEN')
@@ -73,6 +90,7 @@ async def command_viewslot_handler(message: Message) -> None:
 class Form(StatesGroup):
     name = State()
     prompt = State()
+    parts = State()
     days = State()
 
 @form_router.message(Command('newslot'))
@@ -128,9 +146,15 @@ async def process_days(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     slots_ref = db.collection('users').document(str(user_id)).collection('slots')
 
+    prompt = (await state.get_data())['prompt']
+    days = int((await state.get_data())['days'])
+
+    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints")
+
     slots_ref.add({
         'name': (await state.get_data())['name'].strip(),
         'prompt': (await state.get_data())['prompt'].strip(),
+        'parts': response.text.split('\n') if response else [],
         'days': (await state.get_data())['days'].strip()
     })
     await state.clear()

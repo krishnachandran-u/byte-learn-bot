@@ -2,3 +2,5 @@ python-dotenv==1.0.1
 aiogram==3.4.1
 firebase-admin==6.5.0
 schedule==1.2.1
+google-generativeai==0.4.1
+ipython==8.23.0
