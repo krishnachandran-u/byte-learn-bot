@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import schedule
 import sys
+import time
 from dotenv import load_dotenv
 from os import getenv
 
@@ -13,6 +15,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.markdown import hbold
+from aiogram.methods import SendMessage
 
 import firebase_admin
 from firebase_admin import credentials, firestore, db
@@ -43,6 +46,7 @@ TOKEN = getenv('TOKEN')
 
 form_router = Router() 
 
+bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 dp.include_router(form_router)
 
@@ -92,6 +96,22 @@ class Form(StatesGroup):
     prompt = State()
     parts = State()
     days = State()
+
+async def send_scheduled_message(user_id, slot_id):
+    slots_ref = db.collection('users').document(str(user_id)).collection('slots').document(slot_id)
+    slot_data = slots_ref.get().to_dict()
+    day = slot_data['day']
+    days = int(slot_data['days'])
+
+    response = model.generate_content(slot_data['parts'][day] + f" give a detailed explanation of the topic in 200 words. it is learning content. the explanation should be scientific and clear. Strictly give two sentences as the output. The day number and the detailed explanation")
+    await bot.send_message(user_id, response.text)
+
+    day += 1
+    slots_ref.update({'day': day})
+
+    if day == days:
+        slots_ref.delete()
+        return schedule.CancelJob
 
 @form_router.message(Command('newslot'))
 async def command_newslot_handler(message: Message, state: FSMContext) -> None:
@@ -149,16 +169,27 @@ async def process_days(message: Message, state: FSMContext) -> None:
     prompt = (await state.get_data())['prompt']
     days = int((await state.get_data())['days'])
 
-    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints")
+    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. strings should not have double quotes and there should be exacly {days} strings. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints")
 
-    slots_ref.add({
+    doc_ref = slots_ref.add({
         'name': (await state.get_data())['name'].strip(),
         'prompt': (await state.get_data())['prompt'].strip(),
         'parts': response.text.split('\n') if response else [],
-        'days': (await state.get_data())['days'].strip()
+        'days': (await state.get_data())['days'].strip(),
+        'day': 0
     })
-    await state.clear()
+
+    slot_id = doc_ref[1].id
+
+    # Schedule the send_scheduled_message function to run every day at 6 AM
+    #schedule.every().day.at("06:00").do(asyncio.create_task, send_scheduled_message(user_id, slot_id))
+    #schedule.every(10).seconds.do(asyncio.create_task, send_scheduled_message(user_id, slot_id))
+
+    #await send_scheduled_message(user_id, slot_id) # this works
+
     await message.answer("Slot created!")
+
+    await state.clear()
 
 @dp.message(Command('deleteslot'))
 async def command_deleteslot_handler(message: Message) -> None:
@@ -180,7 +211,6 @@ async def command_deleteslot_handler(message: Message) -> None:
     await message.answer("Slot not found")
 
 async def main() -> None:
-    bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
