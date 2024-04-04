@@ -63,7 +63,7 @@ Ready to explore? Let's go!
 /deleteslot slot_name - Delete a slot
 /cancel - Cancel the current operation
 """)
-        
+
 @dp.message(Command('slots'))
 async def command_slots_handler(message: Message) -> None:
     user_id = message.from_user.id
@@ -74,6 +74,25 @@ async def command_slots_handler(message: Message) -> None:
         data = doc.to_dict()
         reply += f"{data['name']}\n"  
     await message.answer(f"Here are the available slots:\n\n{reply}\nTo view the resources in a slot, type /viewslot slot_name")
+
+@dp.message(Command('get'))
+async def command_cancel_handler(message: Message, state: FSMContext) -> None:
+    user_id = message.from_user.id
+    slots_ref = db.collection('users').document(str(user_id)).collection('slots')
+    slots = slots_ref.stream()
+    for doc in slots:
+        data = doc.to_dict()
+        day = int(data['day'])
+        days = int(data['days'])
+        response = model.generate_content(data['parts'][day] + f" give a detailed explanation of the topic in 200 words. it is learning content. the explanation should be scientific and clear. Strictly give two sentences as the output. The day number and the detailed explanation. stricly folllow the constraints. DONOT GIVE ME THE OUTPUT IN MARKDOWN FORMAT I REPEAT. Just use normal text")
+        await message.answer(response.text)
+
+        day += 1
+        if day == days:
+            slots_ref.document(doc.id).delete()
+
+        slots_ref.document(doc.id).update({'day': day})
+    
 
 @dp.message(Command('viewslot'))
 async def command_viewslot_handler(message: Message) -> None:
@@ -96,22 +115,6 @@ class Form(StatesGroup):
     prompt = State()
     parts = State()
     days = State()
-
-async def send_scheduled_message(user_id, slot_id):
-    slots_ref = db.collection('users').document(str(user_id)).collection('slots').document(slot_id)
-    slot_data = slots_ref.get().to_dict()
-    day = slot_data['day']
-    days = int(slot_data['days'])
-
-    response = model.generate_content(slot_data['parts'][day] + f" give a detailed explanation of the topic in 200 words. it is learning content. the explanation should be scientific and clear. Strictly give two sentences as the output. The day number and the detailed explanation")
-    await bot.send_message(user_id, response.text)
-
-    day += 1
-    slots_ref.update({'day': day})
-
-    if day == days:
-        slots_ref.delete()
-        return schedule.CancelJob
 
 @form_router.message(Command('newslot'))
 async def command_newslot_handler(message: Message, state: FSMContext) -> None:
@@ -169,7 +172,7 @@ async def process_days(message: Message, state: FSMContext) -> None:
     prompt = (await state.get_data())['prompt']
     days = int((await state.get_data())['days'])
 
-    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. strings should not have double quotes and there should be exacly {days} strings. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints")
+    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. strings should not have double quotes and there should be exacly {days} strings. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints. DONOT GIVE THE OUTPUT IN MARKDOWN FORMAT just in unformatted text with the contraints i mentioned early. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE")
 
     doc_ref = slots_ref.add({
         'name': (await state.get_data())['name'].strip(),
@@ -181,7 +184,7 @@ async def process_days(message: Message, state: FSMContext) -> None:
 
     slot_id = doc_ref[1].id
 
-    # Schedule the send_scheduled_message function to run every day at 6 AM
+    #Schedule the send_scheduled_message function to run every day at 6 AM
     #schedule.every().day.at("06:00").do(asyncio.create_task, send_scheduled_message(user_id, slot_id))
     #schedule.every(10).seconds.do(asyncio.create_task, send_scheduled_message(user_id, slot_id))
 
