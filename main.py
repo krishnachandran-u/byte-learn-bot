@@ -80,18 +80,21 @@ async def command_cancel_handler(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     slots_ref = db.collection('users').document(str(user_id)).collection('slots')
     slots = slots_ref.stream()
+    reply = ""
     for doc in slots:
         data = doc.to_dict()
         day = int(data['day'])
         days = int(data['days'])
         response = model.generate_content(data['parts'][day] + f" give a detailed explanation of the topic in 200 words. it is learning content. the explanation should be scientific and clear. Strictly give two sentences as the output. The day number and the detailed explanation. stricly folllow the constraints. DONOT GIVE ME THE OUTPUT IN MARKDOWN FORMAT I REPEAT. Just use normal text")
-        await message.answer(response.text)
+        reply += f"{response.text}\n\n"
 
         day += 1
-        if day == days:
-            slots_ref.document(doc.id).delete()
 
         slots_ref.document(doc.id).update({'day': day})
+
+        if day == days:
+            slots_ref.document(doc.id).delete()
+    await message.answer(reply)
     
 
 @dp.message(Command('viewslot'))
@@ -172,12 +175,14 @@ async def process_days(message: Message, state: FSMContext) -> None:
     prompt = (await state.get_data())['prompt']
     days = int((await state.get_data())['days'])
 
-    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as {days} strings separated by a newlines. strings should not have double quotes and there should be exacly {days} strings. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by NEWLINES strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints. DONOT GIVE THE OUTPUT IN MARKDOWN FORMAT just in unformatted text with the contraints i mentioned early. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE")
+    response = model.generate_content(prompt.strip() + f" split the given prompt into topics for {days} days and return topics as separate {days} strings separated by a nextlines. strings should not have double quotes and there should be exacly {days} strings. Topics should be long, very elaborate and specific . I repeat return topics as {days} strings separated by nextline strictly. In each line mention the day number. Dont include anything other than that in the reply and strictly obey the constraints. DONOT GIVE THE OUTPUT IN MARKDOWN FORMAT just in unformatted text with the contraints i mentioned early. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE. ONLY RETURN {days} . strings should not have double quotes around in .txt format. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE. I REPEAT GIVE {days} SEPARATE STRINGS NOTHING MORE")
+
+    print(response.text)
 
     doc_ref = slots_ref.add({
         'name': (await state.get_data())['name'].strip(),
         'prompt': (await state.get_data())['prompt'].strip(),
-        'parts': response.text.split('\n') if response else [],
+        'parts': response.text.replace('"', "").replace("\n\n", "\n").split('\n') if response else [],
         'days': (await state.get_data())['days'].strip(),
         'day': 0
     })
